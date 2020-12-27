@@ -105,7 +105,7 @@ def fasta_dict(f, taxon_list):
         else:
             f_dict[new_key] += line.upper()
 
-    seqlen = len(f_dict[random.choice(f_dict.keys())])
+    seqlen = len(f_dict[random.choice(list(f_dict.keys()))])
     missing = seqlen * '-'
     
     for t in taxon_list:
