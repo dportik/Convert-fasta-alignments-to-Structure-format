@@ -4,13 +4,14 @@ import shutil
 import random
 import operator
 from datetime import datetime
+from collections import Counter
 
 def get_args():
     '''
     Get arguments from command line.
     '''
     parser = argparse.ArgumentParser(
-            description="""Convert_Fasta_Set_to_Structure - A script to convert""")
+            description="""Convert_Fasta_Set_to_Structure - A script to convert a set of phased fasta files into structure format.""")
     parser.add_argument("-i", "--in_dir",
                             required=True,
                             help="REQUIRED: The full path to a directory which contains the "
@@ -19,6 +20,10 @@ def get_args():
                             required=True,
                             help="REQUIRED: The full path to an existing directory to write "
                             "output files.")
+    parser.add_argument("--remove_singletons",
+                            required=False,
+                            action='store_true',
+                            help="Optional: Exclude any alignment column with singleton SNPs from being selected.")
     return parser.parse_args()        
 
 def gather_taxa(f_list):
@@ -51,7 +56,7 @@ def specific_taxon_finder(f):
         
     return full_taxa
 
-def collect_dicts(f_list, taxon_list, select):
+def collect_dicts(f_list, taxon_list, select, remove_singletons):
     """
     Identifies variable columns in each fasta file and selects 
     one column randomly to obtain a SNP site for the fasta. Creates 
@@ -68,7 +73,7 @@ def collect_dicts(f_list, taxon_list, select):
         # select a variable column from the alignment
         # if one found will be a list of the bases present,
         # else will return None
-        snp = process_aln(aln, select)
+        snp = process_aln(aln, select, remove_singletons)
         # if variable column found
         if snp is not None:
             # create new dictionary with sample/taxon as key and
@@ -130,7 +135,7 @@ def collect_aln(f_dict, taxon_list):
         
     return aln
 
-def process_aln(aln, select):
+def process_aln(aln, select, remove_singletons):
     """
     Takes list of sequences (aln) produced by collect_aln(). 
     Checks each column to see if they contain 2 or more bases 
@@ -148,7 +153,15 @@ def process_aln(aln, select):
         # determine number of unique & valid nucleotide characters in column 
         flattened, miabp = summarize_col(column)
         if len(flattened) >= 2:
-            kept_cols.append([i, miabp])
+            if remove_singletons:
+                filt_column = [b for b in column if b not in ["N", "-", "?"]]
+                c = Counter(filt_column)
+                if c.most_common(2)[1][1] > 2:
+                    kept_cols.append([i, miabp])
+                else:
+                    pass
+            else:
+                kept_cols.append([i, miabp])
             #print "Column {} is variable and has {} missing bases".format(i, miabp)
     if kept_cols:
         print("\tFound {} variable sites to choose from.".format(len(kept_cols)))
@@ -241,7 +254,7 @@ def main():
     # get list of samples/taxa found in the fasta files
     taxon_list = gather_taxa(f_list)
     # sample one variable alignment column per fasta
-    dict_list, alns_used = collect_dicts(f_list, taxon_list, "random")
+    dict_list, alns_used = collect_dicts(f_list, taxon_list, "random", args.remove_singletons)
     # obtain a concatenated sequence of the sampled bases from the chosen columns
     concat_dict = concatenate(dict_list, taxon_list)
     # convert the nucleotide characters into structure appropriate codes (numerical)
