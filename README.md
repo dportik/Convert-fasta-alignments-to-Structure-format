@@ -18,5 +18,7 @@ To use the script:
 ```
 python Convert_Fasta_Set_to_Structure.py -i <path to directory with fasta files> -o <path to output directory>
 ```
+
+The optional `--remove_singletons` flag can be included to eliminate alignment columns with singleton SNPs from being selected. Those columns are considered "variable" sites but may not contain useful population level information. 
  
 Example data are provided in the `Example-Data/Inputs` folder, and will produce the output files contained in the `Example-Data/Outputs` folder. 
